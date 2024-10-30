@@ -1,0 +1,34 @@
+Plano
+
+con la ayuda de vecotores, 
+
+Nx * (Px - Kx) + Ny * (Py - Ky) + Nz * (Pz - Kz) = 0
+
+Interseccion de un de una recta con un plano
+
+Si P = (0, 0, 0)
+
+
+---
+Para calcular el ray tracing,
+la recta generada por ese rayo
+
+ax + by + cz + d = 0
+si tenemos la recta
+
+x = alfa * dx
+y = alfa * dy
+z = alfa * dz
+
+sustituyendo en la ecuacion del plano
+
+a * alfa * dx + b * alfa * dy + c * alfa * dz + d = 0
+
+( a * dx + b * dy + c * dz ) * alfa + d = 0
+
+alfa = -d / ( a * dx + b * dy + c * dz )
+
+con el alfa calculado, podemos calcular el punto de interseccion
+
+
+

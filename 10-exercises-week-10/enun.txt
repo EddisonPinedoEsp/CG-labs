@@ -1,0 +1,156 @@
+Implementar un programa que sea capaz de dibujar una curva implícita, utilizando maching squares y la subdivisión adaptativa. 
+El prototipo de la función que escribas debe ser el siguiente: 
+    draw curve(f : R^2 R, output_filename, xmin,ymin,xmax,ymax, precision)
+donde:    
+- f(xy) = 0 es la curva que queremos dibujar. 
+- Nombre de archivo de salida es el nombre que se debe generar. Tiene que ser un le en formato EPS. 
+- xmin,ymin,xmax,ymax son las coordenadas del rectángulo que clasificaremos como completamente interior, completamente exterior o que contiene borde; Y subdividiremos o trazaremos una línea basada en los casos del maching squares. 
+- La precisión es la condición de parada de la subdivisión. 
+Cuando tanto 
+    xmax - xmin < precisión 
+
+    y 
+
+    ymax - ymin < precisión
+
+dejamos de subdividir.
+
+para lo anterior tengo la dibujos de los rectángulos, pero no de la función
+tenog lo siguiente
+
+"
+#include <iostream>
+#include <cmath>
+#include <cstdlib>
+#include <fstream>
+#include <string>
+
+using namespace std;
+
+const double SCALE_FACTOR = 100.0;
+ofstream epsFile;
+
+// Función que representa la curva implícita
+double fun(double x, double y) {
+    return x * x + y * y - 3 * 3;  // Ejemplo: círculo de radio 3
+}
+
+// Dibuja un segmento de línea entre dos puntos en el archivo EPS
+void dibujar_linea(double x0, double y0, double x1, double y1) {
+    double x0s = x0 * SCALE_FACTOR;
+    double y0s = y0 * SCALE_FACTOR;
+    double x1s = x1 * SCALE_FACTOR;
+    double y1s = y1 * SCALE_FACTOR;
+
+    epsFile << x0s << " " << y0s << " moveto\n";
+    epsFile << x1s << " " << y1s << " lineto\n";
+    epsFile << "stroke\n";
+}
+
+// Calcula la posición de la intersección entre los bordes de la cuadrícula
+double interpolate(double v1, double v2, double x1, double x2) {
+    return x1 + (0 - v1) * (x2 - x1) / (v2 - v1);
+}
+
+void marchingSquares(double x0, double y0, double x1, double y1, double precision) {
+    double values[4];
+    values[0] = fun(x0, y0);            // v00
+    values[1] = fun(x1, y0);            // v01
+    values[2] = fun(x0, y1);            // v10
+    values[3] = fun(x1, y1);            // v11
+
+    int caseIndex = (values[0] < 0 ? 1 : 0) |
+                    (values[1] < 0 ? 2 : 0) |
+                    (values[2] < 0 ? 4 : 0) |
+                    (values[3] < 0 ? 8 : 0); // Determina el caso según los valores
+
+    // Solo dibuja la curva implícita según los casos de Marching Squares
+    if (caseIndex != 0 && caseIndex != 15) {
+        double xMidX0 = interpolate(values[0], values[1], x0, x1);
+        double yMidY0 = interpolate(values[0], values[2], y0, y1);
+        double xMidX1 = interpolate(values[2], values[3], x0, x1);
+        double yMidY1 = interpolate(values[1], values[3], y0, y1);
+
+        switch (caseIndex) {
+            case 1: // 0001
+                dibujar_linea(xMidX0, y0, x0, yMidY0);
+                break;
+            case 2: // 0010
+                dibujar_linea(xMidX0, y0, x1, yMidY1);
+                break;
+            case 3: // 0011
+                dibujar_linea(x0, yMidY0, x1, yMidY1);
+                break;
+            case 4: // 0100
+                dibujar_linea(x0, yMidY0, xMidX1, y1);
+                break;
+            case 5: // 0101
+                dibujar_linea(xMidX0, y0, xMidX1, y1);
+                break;
+            case 6: // 0110
+                dibujar_linea(xMidX0, y0, x1, yMidY1);
+                dibujar_linea(x0, yMidY0, xMidX1, y1);
+                break;
+            case 7: // 0111
+                dibujar_linea(xMidX0, y0, x1, yMidY1);
+                break;
+            case 8: // 1000
+                dibujar_linea(xMidX1, y1, x1, yMidY1);
+                break;
+            case 9: // 1001
+                dibujar_linea(xMidX0, y0, xMidX1, y1);
+                break;
+            case 10: // 1010
+                dibujar_linea(xMidX1, y1, x1, yMidY1);
+                dibujar_linea(x0, yMidY0, xMidX0, y0);
+                break;
+            case 11: // 1011
+                dibujar_linea(xMidX1, y1, x1, yMidY1);
+                break;
+            case 12: // 1100
+                dibujar_linea(x0, yMidY0, xMidX1, y1);
+                break;
+            case 13: // 1101
+                dibujar_linea(xMidX0, y0, x1, yMidY1);
+                break;
+            case 14: // 1110
+                dibujar_linea(xMidX0, y0, xMidX1, y1);
+                break;
+        }
+    }
+
+    // Condición de parada para subdividir el área
+    if ((x1 - x0) > precision || (y1 - y0) > precision) {
+        double xMid = (x0 + x1) / 2;
+        double yMid = (y0 + y1) / 2;
+        marchingSquares(x0, y0, xMid, yMid, precision);
+        marchingSquares(xMid, y0, x1, yMid, precision);
+        marchingSquares(x0, yMid, xMid, y1, precision);
+        marchingSquares(xMid, yMid, x1, y1, precision);
+    }
+}
+
+// Función principal para configurar el archivo EPS y llamar a Marching Squares
+void draw_curve(double (*f)(double, double), const string &output_filename, 
+                double xmin, double ymin, double xmax, double ymax, double precision) {
+    
+    epsFile.open(output_filename);
+    epsFile << "%!PS-Adobe-3.0 EPSF-3.0\n";
+    epsFile << "%%BoundingBox: 0 0 " << (xmax - xmin) * SCALE_FACTOR << " " << (ymax - ymin) * SCALE_FACTOR << "\n";
+    
+    marchingSquares(xmin, ymin, xmax, ymax, precision);
+    
+    epsFile << "showpage\n";
+    epsFile.close();
+
+    cout << "Archivo EPS generado: " << output_filename << endl;
+}
+
+// Ejemplo de uso
+int main() {
+    draw_curve(fun, "ci.eps", -4, -4, 4, 4, 0.1);
+    return 0;
+}
+" 
+
+Aydume con la implementacion, para dibujar curvas implícitas
